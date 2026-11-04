@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Elixir V1",
+  "version": "1.0.0",
+  "description": "Pro voice DSP for Discord by thalvrix(Reham)",
+  "icons": {
+    "16": "elixir.png",
+    "48": "elixir.png",
+    "128": "elixir.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.discord.com/*"],
+      "css": ["style.css"],
+      "js": ["loader.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["core.js", "elixir.png", "bg.gif"],
+      "matches": ["*://*.discord.com/*"]
+    }
+  ]
+}
