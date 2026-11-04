@@ -1,0 +1,167 @@
+:root {
+  --ex-accent: #e0122e;
+  --ex-accent-2: #ff2a48;
+  --ex-accent-deep: #7a0716;
+  --ex-line: rgba(224,18,46,0.35);
+  --ex-glow: rgba(224,18,46,0.55);
+  --ex-green: #19e65a;
+  --ex-bg: #050505;
+}
+
+#ex-panel {
+  position: fixed; left: 20px; top: 20px; z-index: 2147483647;
+  width: min(500px, calc(100vw - 24px)); max-height: 88vh; display: none;
+  border: 1px solid var(--ex-line); border-radius: 14px; overflow: hidden;
+  color: #fff; font-family: "Helvetica Neue", Arial, sans-serif;
+  background: #000 url("bg.gif") center center / cover no-repeat;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.95), 0 0 30px var(--ex-glow);
+}
+#ex-panel.open { display: flex; flex-direction: column; }
+#ex-panel.collapsed { width: auto; min-width: 190px; max-height: none; }
+
+.ex-inner {
+  position: relative; z-index: 2; padding: 14px 16px 12px;
+  display: flex; flex-direction: column; max-height: 88vh; box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(0,0,0,0.42), rgba(0,0,0,0.55));
+}
+.ex-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 2px; }
+.ex-body::-webkit-scrollbar { width: 5px; }
+.ex-body::-webkit-scrollbar-thumb { background: var(--ex-accent-deep); border-radius: 4px; }
+
+/* HEADER */
+.ex-head {
+  flex: none; display: flex; align-items: center; justify-content: space-between;
+  gap: 14px; margin-bottom: 12px; cursor: move; user-select: none;
+}
+.ex-brand { display: flex; align-items: center; gap: 10px; }
+.ex-logo {
+  width: 36px; height: 36px; border-radius: 8px;
+  background: url("elixir.png") center/contain no-repeat, linear-gradient(180deg,#e0122e,#7a0716);
+  border: 1px solid var(--ex-accent-2);
+  box-shadow: 0 0 12px var(--ex-glow);
+}
+.ex-title {
+  font-size: 18px; font-weight: 800; letter-spacing: 3px;
+  background: linear-gradient(180deg, #fff, #ff2a48);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 8px var(--ex-glow));
+}
+.ex-sub { font-size: 10px; color: var(--ex-green); letter-spacing: 1px; }
+.ex-head-r { display: flex; align-items: center; gap: 8px; }
+.ex-status {
+  padding: 4px 10px; border-radius: 20px; font-size: 9px; letter-spacing: 1px;
+  color: #fff; background: #0b0b0b; border: 1px solid var(--ex-line);
+}
+.ex-status.live {
+  color: #fff; border-color: var(--ex-accent-2);
+  box-shadow: 0 0 14px var(--ex-glow);
+}
+.ex-icon {
+  width: 26px; height: 26px; border-radius: 7px; cursor: pointer;
+  border: 1px solid var(--ex-accent-2); color: #fff; font-size: 10px;
+  background: linear-gradient(180deg, #e0122e, #7a0716);
+}
+
+/* TABS */
+.ex-tabs { flex: none; display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
+.ex-tab {
+  flex: 1 1 auto; min-width: 0; padding: 8px 4px; border-radius: 8px;
+  border: 1px solid var(--ex-line); background: #0b0b0b; color: #fff;
+  font: 700 10px/1 "Helvetica Neue", Arial, sans-serif; letter-spacing: 1.2px;
+  cursor: pointer; transition: all .2s;
+}
+.ex-tab:hover { color: #ff5a6e; }
+.ex-tab.on {
+  color: #fff; border-color: var(--ex-accent-2);
+  background: linear-gradient(180deg, rgba(224,18,46,0.55), rgba(90,4,16,0.6));
+  box-shadow: 0 0 14px var(--ex-glow);
+}
+
+/* ROWS */
+.ex-row {
+  margin-bottom: 10px; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid rgba(224,18,46,0.2); background: rgba(0,0,0,0.35);
+}
+.ex-line { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 7px; }
+.ex-name { font-size: 10.5px; font-weight: 800; letter-spacing: 1.3px; color: var(--ex-green); }
+.ex-val { font-size: 11px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+
+#ex-panel input[type="range"] {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 5px; margin: 0;
+  border-radius: 5px; outline: none; cursor: pointer;
+  background: linear-gradient(90deg, #7a0716, #e0122e calc(var(--p,0%)*0.9), #ff2a48 var(--p,0%), #1c1c1c var(--p,0%));
+  border: 1px solid rgba(224,18,46,0.25);
+}
+#ex-panel input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%;
+  background: #fff; border: 2px solid #e0122e; box-shadow: 0 0 12px var(--ex-glow);
+}
+#ex-panel input[type="range"]::-moz-range-thumb {
+  width: 11px; height: 11px; border-radius: 50%;
+  border: 2px solid #e0122e; background: #fff;
+}
+
+/* TOGGLES */
+.ex-toggle-row { display: flex; align-items: center; justify-content: space-between; }
+.ex-tname { display: flex; flex-direction: column; gap: 2px; }
+.ex-subname { font-size: 8.5px; letter-spacing: 1px; color: #b0b0b0; }
+.ex-switch {
+  position: relative; width: 48px; height: 26px; padding: 0;
+  border: 1px solid rgba(224,18,46,0.3); border-radius: 999px;
+  background: #222; cursor: pointer; transition: all .2s;
+}
+.ex-switch.on {
+  background: linear-gradient(180deg, #ff2a48, #a30b20);
+  border-color: #ff5a6e; box-shadow: 0 0 16px var(--ex-glow);
+}
+.ex-knob {
+  position: absolute; top: 2px; left: 2px; width: 20px; height: 20px;
+  border-radius: 50%; background: #fff; transition: transform .2s;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+}
+.ex-switch.on .ex-knob { transform: translateX(22px); }
+
+/* FOOTER */
+.ex-foot { flex: none; margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ex-btn {
+  padding: 9px 0; border-radius: 9px; cursor: pointer;
+  border: 1px solid var(--ex-accent-2); color: #fff;
+  font: 800 10px/1 "Helvetica Neue", Arial, sans-serif; letter-spacing: 1.6px;
+  background: linear-gradient(180deg, #e0122e, #7a0716);
+}
+.ex-btn:hover { filter: brightness(1.15); }
+.ex-btn.alt { background: #0b0b0b; border-color: var(--ex-line); }
+
+/* METERS */
+.ex-meters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.ex-meter-card {
+  border: 1px solid var(--ex-line); border-radius: 10px; padding: 8px;
+  background: rgba(0,0,0,0.45);
+}
+.ex-meter-title {
+  font-size: 9px; font-weight: 800; letter-spacing: 1.2px;
+  color: var(--ex-green); margin-bottom: 6px;
+}
+.ex-meter-canvas { width: 100%; height: 70px; display: block; border-radius: 6px; background: #000; }
+.ex-meter-readout {
+  font-size: 9px; color: #fff; margin-top: 4px;
+  display: flex; justify-content: space-between; font-variant-numeric: tabular-nums;
+}
+.ex-meter-readout b { color: var(--ex-accent-2); }
+
+/* Full-width meter cards */
+.ex-meter-card.wide { grid-column: 1 / -1; }
+.ex-meter-canvas.tall { height: 120px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ex-tab, .ex-btn, .ex-switch { transition: none; }
+}
+
+#ex-panel.collapsed .ex-inner { padding: 8px 10px; max-height: none; }
+#ex-panel.collapsed .ex-tabs,
+#ex-panel.collapsed .ex-body,
+#ex-panel.collapsed .ex-foot,
+#ex-panel.collapsed .ex-sub,
+#ex-panel.collapsed .ex-status { display: none; }
+#ex-panel.collapsed .ex-head { margin-bottom: 0; }
+#ex-panel.collapsed .ex-title { font-size: 16px; letter-spacing: 1px; }
