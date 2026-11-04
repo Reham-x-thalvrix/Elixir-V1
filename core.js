@@ -5,7 +5,9 @@
 
   const LOG = (...a) => console.log("[ELIXIR V1]", ...a);
 
-  // ---------- STATE ----------
+  // ============================================================
+  // STATE
+  // ============================================================
   const state = {
     // MAIN
     preamp: 1, gain: 1.2, rage: 0, distortion: 0, bitrate: 320, exciter: 0,
@@ -23,9 +25,11 @@
     f_stutter: false, f_reverseReverb: false, f_autoGain: false, f_spatialRotate: false
   };
 
-  // ---------- AUDIO CHAIN ----------
+  // ============================================================
+  // AUDIO CHAIN (Step 1 = pass-through; DSP comes in Step 2)
+  // ============================================================
   let ctx = null, src = null, outDest = null;
-  let anL, anR;  // analysers for meters
+  let anL = null, anR = null;
   let workletReady = null;
 
   const getCtx = () => {
@@ -33,14 +37,13 @@
       const AC = window.AudioContext || window.webkitAudioContext;
       try { ctx = new AC({ latencyHint: "interactive", sampleRate: 48000 }); }
       catch { ctx = new AC(); }
-      // Placeholder: worklet modules will be added in Step 2.
       workletReady = Promise.resolve();
     }
     return ctx;
   };
 
   const resume = () => { if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {}); };
-  ["click","touchstart","pointerdown","keydown"].forEach(ev =>
+  ["click", "touchstart", "pointerdown", "keydown"].forEach(ev =>
     window.addEventListener(ev, resume, { passive: true }));
 
   async function buildChain(stream) {
@@ -52,12 +55,11 @@
     outDest = c.createMediaStreamDestination();
     outDest.channelCount = 2;
 
-    // For step 1, direct pass-through with analyser taps.
     anL = c.createAnalyser(); anL.fftSize = 1024;
     anR = c.createAnalyser(); anR.fftSize = 1024;
 
     const split = c.createChannelSplitter(2);
-    src.connect(outDest);           // pass-through
+    src.connect(outDest);
     src.connect(split);
     split.connect(anL, 0);
     split.connect(anR, 1);
@@ -74,7 +76,9 @@
     return outDest.stream;
   }
 
-  // ---------- getUserMedia HOOK ----------
+  // ============================================================
+  // getUserMedia HOOK
+  // ============================================================
   if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
     const origGUM = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
     navigator.mediaDevices.getUserMedia = async (constraints) => {
@@ -101,33 +105,35 @@
     LOG("getUserMedia hooked");
   }
 
-  // ---------- UI ----------
+  // ============================================================
+  // UI METADATA
+  // ============================================================
   const TABS = [
-    { id: "main",    label: "MAIN" },
-    { id: "spatial", label: "SPATIAL" },
-    { id: "voice",   label: "VOICE" },
+    { id: "main",    label: "Main" },
+    { id: "spatial", label: "Spatial" },
+    { id: "voice",   label: "Voice" },
     { id: "fx",      label: "FX" },
-    { id: "meter",   label: "METER" },
-    { id: "feat",    label: "20 FEATURES" }
+    { id: "meter",   label: "Meter" },
+    { id: "feat",    label: "20 Features" }
   ];
 
   const SLIDERS = {
     main: [
-      { key: "preamp",     name: "PREAMP",     min: 1, max: 500,  step: 0.1, fmt: v => v.toFixed(1) + "x" },
-      { key: "gain",       name: "GAIN",       min: 1, max: 50000, step: 1,  fmt: v => v.toFixed(0) + "x" },
-      { key: "rage",       name: "RAGE",       min: 0, max: 2000, step: 1,  fmt: v => v.toFixed(0) },
-      { key: "distortion", name: "DISTORTION", min: 0, max: 5000, step: 1,  fmt: v => v.toFixed(0) },
-      { key: "bitrate",    name: "BITRATE",    min: 32, max: 510, step: 1,  fmt: v => v + " kbps" },
-      { key: "exciter",    name: "EXCITER",    min: 0, max: 500,  step: 1,  fmt: v => v + "%" }
+      { key: "preamp",     name: "PREAMP",     min: 1, max: 500,   step: 0.1, fmt: v => v.toFixed(1) + "×" },
+      { key: "gain",       name: "GAIN",       min: 1, max: 50000, step: 1,   fmt: v => v.toFixed(0) + "×" },
+      { key: "rage",       name: "RAGE",       min: 0, max: 2000,  step: 1,   fmt: v => v.toFixed(0) },
+      { key: "distortion", name: "DISTORTION", min: 0, max: 5000,  step: 1,   fmt: v => v.toFixed(0) },
+      { key: "bitrate",    name: "BITRATE",    min: 32, max: 510,  step: 1,   fmt: v => v + " kbps" },
+      { key: "exciter",    name: "EXCITER",    min: 0, max: 500,   step: 1,   fmt: v => v + "%" }
     ],
     spatial: [
       { key: "presence", name: "PRESENCE", min: 0, max: 5000, step: 1, fmt: v => v.toFixed(0) }
     ],
     voice: [
-      { key: "presence",  name: "PRESENCE",  min: 0, max: 5000, step: 1, fmt: v => v.toFixed(0) },
-      { key: "clarity",   name: "CLARITY",   min: 0, max: 5000, step: 1, fmt: v => v.toFixed(0) },
-      { key: "smooth",    name: "SMOOTH",    min: 0, max: 5000, step: 1, fmt: v => v.toFixed(0) },
-      { key: "voiceBoost",name: "VOICE BOOST", min: 0, max: 5000, step: 1, fmt: v => v.toFixed(0) }
+      { key: "presence",   name: "PRESENCE",    min: 0, max: 5000, step: 1, fmt: v => v.toFixed(0) },
+      { key: "clarity",    name: "CLARITY",     min: 0, max: 5000, step: 1, fmt: v => v.toFixed(0) },
+      { key: "smooth",     name: "SMOOTH",      min: 0, max: 5000, step: 1, fmt: v => v.toFixed(0) },
+      { key: "voiceBoost", name: "VOICE BOOST", min: 0, max: 5000, step: 1, fmt: v => v.toFixed(0) }
     ],
     fx: [
       { key: "reverb", name: "REVERB", min: 0, max: 100, step: 1, fmt: v => v + "%" },
@@ -137,11 +143,11 @@
 
   const TOGGLES = {
     spatial: [
-      { key: "stereo",   name: "STEREO" },
-      { key: "wider",    name: "WIDER" },
-      { key: "haas",     name: "QUICK HAAS" },
-      { key: "inHead",   name: "IN-HEAD" },
-      { key: "behind",   name: "BEHIND" },
+      { key: "stereo",     name: "STEREO" },
+      { key: "wider",      name: "WIDER" },
+      { key: "haas",       name: "QUICK HAAS" },
+      { key: "inHead",     name: "IN-HEAD" },
+      { key: "behind",     name: "BEHIND" },
       { key: "spatial360", name: "360 ROTATE" }
     ],
     voice: [
@@ -176,135 +182,421 @@
     ]
   };
 
-  // ---------- BUILD UI ----------
+  // ============================================================
+  // applyState (stub for Step 1)
+  // ============================================================
+  function applyState() {
+    // DSP wiring comes in Step 2.
+  }
+
+  function updateStatus() {
+    const live = !!(outDest && outDest.stream.getAudioTracks().some(t => t.readyState === "live"));
+    const el = document.getElementById("ex-status-text");
+    const led = document.getElementById("ex-led-status");
+    const sr = document.getElementById("ex-sr");
+    if (el) el.textContent = live ? "LIVE" : "IDLE";
+    if (led) led.className = "ex-led " + (live ? "live" : "");
+    if (sr) sr.textContent = ctx ? (ctx.sampleRate / 1000).toFixed(1) + " kHz" : "—";
+  }
+
+  // ============================================================
+  // BUILD UI
+  // ============================================================
   function buildUI() {
+    if (document.getElementById("ex-panel")) return;
+
+    const trigger = document.createElement("button");
+    trigger.id = "ex-trigger";
+    trigger.title = "Show Elixir V1";
+    document.body.appendChild(trigger);
+
     const panel = document.createElement("div");
     panel.id = "ex-panel";
     panel.innerHTML = `
-      <div class="ex-inner">
-        <header class="ex-head">
+      <div class="ex-topbar">
+        <div class="ex-topbar-l">
           <div class="ex-brand">
-            <div class="ex-logo"></div>
-            <div>
-              <div class="ex-title">ELIXIR V1</div>
-              <div class="ex-sub">by s3m</div>
-            </div>
+            <div class="ex-brand-mark"></div>
+            <span>ELIXIR</span>
+            <span class="ex-version">V1</span>
           </div>
-          <div class="ex-head-r">
-            <div class="ex-status">STANDBY</div>
-            <button class="ex-icon" id="ex-collapse" type="button">▼</button>
+        </div>
+        <div class="ex-topbar-r">
+          <div class="ex-stat-group">
+            <span class="ex-led" id="ex-led-signal"></span>
+            <span id="ex-sr">—</span>
           </div>
-        </header>
-        <nav class="ex-tabs"></nav>
-        <div class="ex-body"></div>
-        <footer class="ex-foot">
-          <button class="ex-btn alt" id="ex-save" type="button">SAVE</button>
-          <button class="ex-btn" id="ex-reset" type="button">RESET</button>
-        </footer>
+          <div class="ex-stat-group">
+            <span class="ex-led" id="ex-led-status"></span>
+            <span id="ex-status-text">IDLE</span>
+          </div>
+          <button class="ex-icon-btn" id="ex-close" title="Hide">×</button>
+        </div>
+      </div>
+      <div class="ex-main">
+        <aside class="ex-sidebar" id="ex-sidebar"></aside>
+        <div class="ex-content" id="ex-content"></div>
+      </div>
+      <div class="ex-footer">
+        <button class="ex-btn" id="ex-load">LOAD</button>
+        <button class="ex-btn primary" id="ex-save">SAVE</button>
+        <button class="ex-btn" id="ex-copy">COPY</button>
+        <button class="ex-btn danger" id="ex-reset">RESET</button>
       </div>`;
     document.body.appendChild(panel);
 
-    const status = panel.querySelector(".ex-status");
-    const tabsEl = panel.querySelector(".ex-tabs");
-    const bodyEl = panel.querySelector(".ex-body");
-
+    const content = panel.querySelector("#ex-content");
+    const sidebar = panel.querySelector("#ex-sidebar");
+    const ledSignal = panel.querySelector("#ex-led-signal");
+    const statusText = panel.querySelector("#ex-status-text");
     let activeTab = "main";
+    let meterRAF = null;
 
-    // Collapse
-    panel.querySelector("#ex-collapse").addEventListener("click", () => {
-      panel.classList.toggle("collapsed");
-      const c = panel.classList.contains("collapsed");
-      panel.querySelector("#ex-collapse").textContent = c ? "▲" : "▼";
-    });
-
-    // Tabs
-    TABS.forEach(t => {
-      const b = document.createElement("button");
-      b.className = "ex-tab" + (t.id === activeTab ? " on" : "");
-      b.textContent = t.label;
-      b.onclick = () => {
-        activeTab = t.id;
-        tabsEl.querySelectorAll(".ex-tab").forEach(x => x.classList.remove("on"));
-        b.classList.add("on");
-        render();
-      };
-      tabsEl.appendChild(b);
-    });
-
-    // Footer
-    panel.querySelector("#ex-reset").addEventListener("click", () => {
-      localStorage.removeItem("elixir_v1_state");
-      location.reload();
-    });
-    panel.querySelector("#ex-save").addEventListener("click", () => {
-      localStorage.setItem("elixir_v1_state", JSON.stringify(state));
-      status.textContent = "SAVED";
-      setTimeout(() => updateStatus(), 1200);
-    });
-
-    // Load saved
     try {
       const saved = JSON.parse(localStorage.getItem("elixir_v1_state") || "null");
       if (saved) Object.assign(state, saved);
     } catch {}
 
-    function sliderRow(s) {
-      const r = document.createElement("div");
-      r.className = "ex-row";
-      r.innerHTML = `
-        <div class="ex-line"><span class="ex-name">${s.name}</span><span class="ex-val"></span></div>
-        <input type="range" min="${s.min}" max="${s.max}" step="${s.step}">`;
-      const input = r.querySelector("input");
-      const val = r.querySelector(".ex-val");
-      input.value = state[s.key];
-      const paint = () => {
-        val.textContent = s.fmt(Number(input.value));
-        input.style.setProperty("--p", ((input.value - s.min) / (s.max - s.min) * 100) + "%");
+    // ---- NAV ----
+    TABS.forEach(t => {
+      const b = document.createElement("button");
+      b.className = "ex-nav" + (t.id === activeTab ? " on" : "");
+      b.dataset.tab = t.id;
+      b.innerHTML = `<span class="ex-nav-icon"></span><span>${t.label}</span>`;
+      b.onclick = () => {
+        activeTab = t.id;
+        sidebar.querySelectorAll(".ex-nav").forEach(x => x.classList.toggle("on", x.dataset.tab === t.id));
+        render();
       };
-      paint();
-      input.addEventListener("input", () => {
-        state[s.key] = Number(input.value);
-        paint();
+      sidebar.appendChild(b);
+    });
+
+    // ---- KNOB ----
+    function knob(opt) {
+      const wrap = document.createElement("div");
+      wrap.className = "ex-knob";
+      const initial = state[opt.key] ?? opt.min;
+      const norm = (initial - opt.min) / (opt.max - opt.min);
+
+      const R = 26, CX = 32, CY = 32;
+      const startAngle = -135, endAngle = 135;
+      const angle = startAngle + norm * (endAngle - startAngle);
+
+      const polar = (cx, cy, r, deg) => {
+        const rad = (deg - 90) * Math.PI / 180;
+        return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+      };
+      const arcPath = (r, a0, a1) => {
+        const [x0, y0] = polar(CX, CY, r, a0);
+        const [x1, y1] = polar(CX, CY, r, a1);
+        const large = Math.abs(a1 - a0) > 180 ? 1 : 0;
+        const sweep = a1 > a0 ? 1 : 0;
+        return `M ${x0} ${y0} A ${r} ${r} 0 ${large} ${sweep} ${x1} ${y1}`;
+      };
+      const trackD = arcPath(R, startAngle, endAngle);
+      const fillD  = arcPath(R, startAngle, angle);
+
+      wrap.innerHTML = `
+        <div class="ex-knob-dial">
+          <svg viewBox="0 0 64 64">
+            <path class="ex-knob-track" d="${trackD}" />
+            <path class="ex-knob-fill"  d="${fillD}"  />
+          </svg>
+          <div class="ex-knob-cap"></div>
+          <div class="ex-knob-pointer"></div>
+        </div>
+        <div class="ex-knob-label">${opt.name}</div>
+        <div class="ex-knob-value"></div>`;
+
+      const fill = wrap.querySelector(".ex-knob-fill");
+      const pointer = wrap.querySelector(".ex-knob-pointer");
+      const valueEl = wrap.querySelector(".ex-knob-value");
+      const dial = wrap.querySelector(".ex-knob-dial");
+
+      const refresh = () => {
+        const v = state[opt.key];
+        const n = Math.max(0, Math.min(1, (v - opt.min) / (opt.max - opt.min)));
+        const a = startAngle + n * (endAngle - startAngle);
+        fill.setAttribute("d", arcPath(R, startAngle, a));
+        pointer.style.transform = `rotate(${a + 180}deg)`;
+        valueEl.textContent = opt.fmt(v);
+        wrap.classList.toggle("hot", n > 0.66 && n <= 0.9);
+        wrap.classList.toggle("max", n > 0.9);
+      };
+      refresh();
+
+      let dragging = false, startY = 0, startVal = 0;
+      dial.addEventListener("pointerdown", e => {
+        dragging = true;
+        startY = e.clientY;
+        startVal = state[opt.key];
+        dial.setPointerCapture(e.pointerId);
+        e.preventDefault();
+      });
+      dial.addEventListener("pointermove", e => {
+        if (!dragging) return;
+        const dy = startY - e.clientY;
+        const range = opt.max - opt.min;
+        const speed = e.shiftKey ? 0.001 : 0.006;
+        let v = startVal + dy * range * speed;
+        v = Math.round(v / opt.step) * opt.step;
+        v = Math.max(opt.min, Math.min(opt.max, v));
+        state[opt.key] = v;
+        refresh();
         applyState();
       });
-      return r;
+      const stop = () => { dragging = false; };
+      dial.addEventListener("pointerup", stop);
+      dial.addEventListener("pointercancel", stop);
+      dial.addEventListener("dblclick", () => {
+        state[opt.key] = opt.min;
+        refresh();
+        applyState();
+      });
+
+      return wrap;
     }
 
-    function toggleRow(t) {
-      const r = document.createElement("div");
-      r.className = "ex-row ex-toggle-row";
-      r.innerHTML = `
-        <span class="ex-tname">
-          <span class="ex-name">${t.name}</span>
-          ${t.sub ? `<span class="ex-subname">${t.sub}</span>` : ""}
-        </span>
-        <button type="button" class="ex-switch" role="switch"><span class="ex-knob"></span></button>`;
-      const sw = r.querySelector(".ex-switch");
-      const sync = () => {
-        sw.classList.toggle("on", !!state[t.key]);
-        sw.setAttribute("aria-checked", !!state[t.key]);
+    // ---- LED BUTTON ----
+    function ledBtn(t) {
+      const b = document.createElement("button");
+      b.className = "ex-led-btn" + (state[t.key] ? " on" : "");
+      b.innerHTML = `
+        <span class="ex-led"></span>
+        <span class="ex-led-btn-body">
+          <span class="ex-led-btn-name">${t.name}</span>
+          ${t.sub ? `<span class="ex-led-btn-sub">${t.sub}</span>` : ""}
+        </span>`;
+      b.onclick = () => {
+        state[t.key] = !state[t.key];
+        b.classList.toggle("on", state[t.key]);
+        applyState();
       };
-      sync();
-      sw.onclick = () => { state[t.key] = !state[t.key]; sync(); applyState(); };
-      return r;
+      return b;
     }
 
+    // ---- RENDER ----
     function render() {
-      bodyEl.innerHTML = "";
-      if (activeTab === "meter") { renderMeters(bodyEl); return; }
-      if (SLIDERS[activeTab]) SLIDERS[activeTab].forEach(s => bodyEl.appendChild(sliderRow(s)));
-      if (TOGGLES[activeTab]) TOGGLES[activeTab].forEach(t => bodyEl.appendChild(toggleRow(t)));
+      cancelAnimationFrame(meterRAF);
+      content.innerHTML = "";
+
+      if (activeTab === "meter") { renderMeters(content); return; }
+
+      const sliders = SLIDERS[activeTab] || [];
+      const toggles = TOGGLES[activeTab] || [];
+
+      if (sliders.length) {
+        const sec = document.createElement("div");
+        sec.className = "ex-section";
+        sec.innerHTML = `<div class="ex-section-title">Parameters</div>`;
+        const grid = document.createElement("div");
+        grid.className = "ex-knob-grid";
+        sliders.forEach(s => grid.appendChild(knob(s)));
+        sec.appendChild(grid);
+        content.appendChild(sec);
+      }
+
+      if (toggles.length) {
+        const sec = document.createElement("div");
+        sec.className = "ex-section";
+        sec.innerHTML = `<div class="ex-section-title">Switches</div>`;
+        const grid = document.createElement("div");
+        grid.className = "ex-led-grid";
+        toggles.forEach(t => grid.appendChild(ledBtn(t)));
+        sec.appendChild(grid);
+        content.appendChild(sec);
+      }
     }
 
-    function updateStatus() {
-      const live = !!(outDest && outDest.stream.getAudioTracks().some(t => t.readyState === "live"));
-      status.textContent = live ? "ACTIVE" : "STANDBY";
-      status.classList.toggle("live", live);
+    // ---- METERS ----
+    function renderMeters(container) {
+      const sec = document.createElement("div");
+      sec.className = "ex-section";
+      sec.innerHTML = `
+        <div class="ex-section-title">Analysis</div>
+        <div class="ex-meter-grid">
+          <div class="ex-meter-card wide">
+            <div class="ex-meter-head"><span>WAVEFORM / RMS</span><b id="ex-m-peak">—</b></div>
+            <canvas class="ex-meter-canvas tall" id="ex-m-scope"></canvas>
+          </div>
+          <div class="ex-meter-card">
+            <div class="ex-meter-head"><span>SPECTRUM</span><b id="ex-m-freq">—</b></div>
+            <canvas class="ex-meter-canvas" id="ex-m-spectrum"></canvas>
+          </div>
+          <div class="ex-meter-card">
+            <div class="ex-meter-head"><span>VECTORSCOPE</span><b id="ex-m-corr">0</b></div>
+            <canvas class="ex-meter-canvas" id="ex-m-gonio"></canvas>
+          </div>
+          <div class="ex-meter-card wide">
+            <div class="ex-meter-head"><span>LUFS · SHORT-TERM</span><b id="ex-m-lufs">—</b></div>
+            <canvas class="ex-meter-canvas" id="ex-m-lufs-canvas"></canvas>
+          </div>
+        </div>`;
+      container.appendChild(sec);
+      startMeters(container);
     }
+
+    function startMeters(root) {
+      const scopeCv = root.querySelector("#ex-m-scope");
+      const specCv = root.querySelector("#ex-m-spectrum");
+      const gonioCv = root.querySelector("#ex-m-gonio");
+      const lufsCv = root.querySelector("#ex-m-lufs-canvas");
+      const peakEl = root.querySelector("#ex-m-peak");
+      const freqEl = root.querySelector("#ex-m-freq");
+      const corrEl = root.querySelector("#ex-m-corr");
+      const lufsEl = root.querySelector("#ex-m-lufs");
+
+      const freqBuf = new Uint8Array(anL ? anL.frequencyBinCount : 512);
+      const tL = new Float32Array(1024), tR = new Float32Array(1024);
+      const lufsHist = new Array(120).fill(-70);
+
+      const fit = cv => {
+        const dpr = window.devicePixelRatio || 1;
+        const r = cv.getBoundingClientRect();
+        cv.width = Math.max(1, r.width * dpr);
+        cv.height = Math.max(1, r.height * dpr);
+        const c = cv.getContext("2d");
+        c.setTransform(1, 0, 0, 1, 0, 0);
+        c.scale(dpr, dpr);
+        return { c, w: r.width, h: r.height };
+      };
+
+      function frame() {
+        meterRAF = requestAnimationFrame(frame);
+        if (!anL || !anR) return;
+        anL.getByteFrequencyData(freqBuf);
+        anL.getFloatTimeDomainData(tL);
+        anR.getFloatTimeDomainData(tR);
+
+        // WAVEFORM
+        {
+          const { c, w, h } = fit(scopeCv);
+          c.clearRect(0, 0, w, h);
+          c.strokeStyle = "#2d3542";
+          c.beginPath(); c.moveTo(0, h / 2); c.lineTo(w, h / 2); c.stroke();
+          c.strokeStyle = "#a3e635";
+          c.lineWidth = 1.4;
+          c.beginPath();
+          for (let i = 0; i < tL.length; i++) {
+            const x = (i / tL.length) * w;
+            const y = h / 2 - tL[i] * (h / 2) * 0.9;
+            i ? c.lineTo(x, y) : c.moveTo(x, y);
+          }
+          c.stroke();
+        }
+
+        // SPECTRUM
+        {
+          const { c, w, h } = fit(specCv);
+          c.clearRect(0, 0, w, h);
+          const bins = 48, step = Math.floor(freqBuf.length / bins), bw = w / bins;
+          for (let i = 0; i < bins; i++) {
+            let v = 0;
+            for (let j = 0; j < step; j++) v = Math.max(v, freqBuf[i * step + j]);
+            const bh = (v / 255) * h;
+            c.fillStyle = "#22d3ee";
+            c.fillRect(i * bw + 1, h - bh, Math.max(1, bw - 2), bh);
+          }
+        }
+
+        // VECTORSCOPE
+        {
+          const { c, w, h } = fit(gonioCv);
+          c.clearRect(0, 0, w, h);
+          c.strokeStyle = "#2d3542";
+          c.beginPath(); c.moveTo(w / 2, 0); c.lineTo(w / 2, h); c.stroke();
+          c.beginPath(); c.moveTo(w / 2 - h / 2, h); c.lineTo(w / 2, 0); c.lineTo(w / 2 + h / 2, h); c.stroke();
+          c.fillStyle = "rgba(34,211,238,0.7)";
+          for (let i = 0; i < 1024; i += 4) {
+            const l = tL[i], r = tR[i];
+            const x = w / 2 + (r - l) * (w / 2) * 0.85;
+            const y = h / 2 - (l + r) * (h / 2) * 0.85;
+            c.fillRect(x, y, 1.5, 1.5);
+          }
+        }
+
+        // LUFS
+        let peak = 0, sum = 0;
+        for (let i = 0; i < tL.length; i++) {
+          peak = Math.max(peak, Math.abs(tL[i]));
+          sum += tL[i] * tL[i];
+        }
+        const rms = Math.sqrt(sum / tL.length);
+        const db = 20 * Math.log10(rms || 1e-7);
+        lufsHist.push(db - 5); lufsHist.shift();
+        {
+          const { c, w, h } = fit(lufsCv);
+          c.clearRect(0, 0, w, h);
+          c.strokeStyle = "#a78bfa";
+          c.lineWidth = 1.4;
+          c.beginPath();
+          for (let i = 0; i < lufsHist.length; i++) {
+            const x = (i / lufsHist.length) * w;
+            const v = Math.max(-60, Math.min(0, lufsHist[i]));
+            const y = h - ((v + 60) / 60) * h;
+            i ? c.lineTo(x, y) : c.moveTo(x, y);
+          }
+          c.stroke();
+        }
+
+        // Readouts
+        peakEl.textContent = (peak > 0 ? 20 * Math.log10(peak) : -Infinity).toFixed(1) + " dB";
+        lufsEl.textContent = db.toFixed(1) + " LUFS";
+        let mb = 0, mv = 0;
+        for (let i = 1; i < freqBuf.length; i++) if (freqBuf[i] > mv) { mv = freqBuf[i]; mb = i; }
+        const hz = ctx ? Math.round(mb * (ctx.sampleRate / 2) / freqBuf.length) : 0;
+        freqEl.textContent = mv > 30 ? hz + " Hz" : "—";
+        let num = 0, dl = 0, dr = 0;
+        for (let i = 0; i < tL.length; i++) { num += tL[i] * tR[i]; dl += tL[i] ** 2; dr += tR[i] ** 2; }
+        corrEl.textContent = (dl && dr ? num / Math.sqrt(dl * dr) : 0).toFixed(2);
+
+        if (ledSignal) ledSignal.classList.toggle("on", peak > 0.02);
+      }
+      frame();
+    }
+
+    // ---- TOPBAR / FOOTER ----
+    const showPanel = v => {
+      panel.classList.toggle("open", v);
+      trigger.classList.toggle("show", !v);
+    };
+    panel.querySelector("#ex-close").onclick = () => showPanel(false);
+    trigger.onclick = () => showPanel(true);
+
+    panel.querySelector("#ex-save").onclick = () => {
+      localStorage.setItem("elixir_v1_state", JSON.stringify(state));
+      statusText.textContent = "SAVED";
+      setTimeout(updateStatus, 1200);
+    };
+    panel.querySelector("#ex-load").onclick = () => {
+      try {
+        const s = JSON.parse(localStorage.getItem("elixir_v1_state") || "null");
+        if (s) { Object.assign(state, s); render(); applyState(); }
+      } catch {}
+    };
+    panel.querySelector("#ex-copy").onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(JSON.stringify(state, null, 2));
+        statusText.textContent = "COPIED";
+        setTimeout(updateStatus, 1200);
+      } catch {}
+    };
+    panel.querySelector("#ex-reset").onclick = () => {
+      localStorage.removeItem("elixir_v1_state");
+      location.reload();
+    };
+
+    window.addEventListener("keydown", e => {
+      if (!panel.classList.contains("open")) return;
+      if (e.ctrlKey && e.key === "s") { e.preventDefault(); panel.querySelector("#ex-save").click(); }
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "r") {
+        e.preventDefault(); panel.querySelector("#ex-reset").click();
+      }
+    });
 
     // Drag
-    const head = panel.querySelector(".ex-head");
-    head.addEventListener("pointerdown", e => {
+    const topbar = panel.querySelector(".ex-topbar");
+    topbar.addEventListener("pointerdown", e => {
       if (e.target.closest("button")) return;
       const rect = panel.getBoundingClientRect();
       const ox = e.clientX - rect.left, oy = e.clientY - rect.top;
@@ -313,7 +605,7 @@
       panel.style.right = "auto"; panel.style.bottom = "auto";
       const move = ev => {
         panel.style.left = Math.max(4, Math.min(innerWidth - panel.offsetWidth - 4, ev.clientX - ox)) + "px";
-        panel.style.top  = Math.max(4, Math.min(innerHeight - panel.offsetHeight - 4, ev.clientY - oy)) + "px";
+        panel.style.top = Math.max(4, Math.min(innerHeight - panel.offsetHeight - 4, ev.clientY - oy)) + "px";
       };
       const up = () => {
         window.removeEventListener("pointermove", move);
@@ -325,181 +617,13 @@
 
     render();
     updateStatus();
-    panel.classList.add("open");
-
-    // ---------- METERS ----------
-    function renderMeters(container) {
-      container.innerHTML = `
-        <div class="ex-meters">
-          <div class="ex-meter-card wide">
-            <div class="ex-meter-title">SPECTRUM</div>
-            <canvas class="ex-meter-canvas tall" id="ex-spectrum"></canvas>
-            <div class="ex-meter-readout"><span>PEAK <b id="ex-peak">-inf</b> dB</span><span>RMS <b id="ex-rms">-inf</b> dB</span></div>
-          </div>
-          <div class="ex-meter-card">
-            <div class="ex-meter-title">OSCILLOSCOPE</div>
-            <canvas class="ex-meter-canvas" id="ex-scope"></canvas>
-            <div class="ex-meter-readout"><span>FREQ <b id="ex-freq">—</b></span></div>
-          </div>
-          <div class="ex-meter-card">
-            <div class="ex-meter-title">STEREO / GONIO</div>
-            <canvas class="ex-meter-canvas" id="ex-gonio"></canvas>
-            <div class="ex-meter-readout"><span>CORR <b id="ex-corr">0</b></span></div>
-          </div>
-          <div class="ex-meter-card wide">
-            <div class="ex-meter-title">LUFS (SHORT-TERM)</div>
-            <canvas class="ex-meter-canvas" id="ex-lufs"></canvas>
-            <div class="ex-meter-readout"><span>NOW <b id="ex-lufs-v">-inf</b></span><span>TARGET <b>-16</b></span></div>
-          </div>
-        </div>`;
-      startMeters(container);
-    }
-
-    let meterRAF = null;
-    function startMeters(root) {
-      cancelAnimationFrame(meterRAF);
-      const spec = root.querySelector("#ex-spectrum");
-      const scope = root.querySelector("#ex-scope");
-      const gonio = root.querySelector("#ex-gonio");
-      const lufsCv = root.querySelector("#ex-lufs");
-      const peakEl = root.querySelector("#ex-peak");
-      const rmsEl = root.querySelector("#ex-rms");
-      const freqEl = root.querySelector("#ex-freq");
-      const corrEl = root.querySelector("#ex-corr");
-      const lufsEl = root.querySelector("#ex-lufs-v");
-
-      const freqBuf = new Uint8Array(anL ? anL.frequencyBinCount : 512);
-      const timeBufL = new Float32Array(1024);
-      const timeBufR = new Float32Array(1024);
-      const lufsHistory = new Array(120).fill(-70);
-
-      const setupCanvas = cv => {
-        const dpr = window.devicePixelRatio || 1;
-        const rect = cv.getBoundingClientRect();
-        cv.width = rect.width * dpr;
-        cv.height = rect.height * dpr;
-        const c2 = cv.getContext("2d");
-        c2.scale(dpr, dpr);
-        return { c2, w: rect.width, h: rect.height };
-      };
-
-      function loop() {
-        meterRAF = requestAnimationFrame(loop);
-        if (!anL || !anR) return;
-
-        // SPECTRUM
-        anL.getByteFrequencyData(freqBuf);
-        {
-          const { c2, w, h } = setupCanvas(spec);
-          c2.clearRect(0, 0, w, h);
-          const bins = 64, step = Math.floor(freqBuf.length / bins);
-          const bw = w / bins;
-          for (let i = 0; i < bins; i++) {
-            let v = 0;
-            for (let j = 0; j < step; j++) v = Math.max(v, freqBuf[i * step + j]);
-            const bh = (v / 255) * h;
-            const grad = c2.createLinearGradient(0, h - bh, 0, h);
-            grad.addColorStop(0, "#ff2a48");
-            grad.addColorStop(1, "#7a0716");
-            c2.fillStyle = grad;
-            c2.fillRect(i * bw + 1, h - bh, bw - 2, bh);
-          }
-        }
-
-        // OSCILLOSCOPE
-        anL.getFloatTimeDomainData(timeBufL);
-        anR.getFloatTimeDomainData(timeBufR);
-        {
-          const { c2, w, h } = setupCanvas(scope);
-          c2.clearRect(0, 0, w, h);
-          c2.strokeStyle = "#19e65a";
-          c2.lineWidth = 1.5;
-          c2.beginPath();
-          for (let i = 0; i < timeBufL.length; i++) {
-            const x = (i / timeBufL.length) * w;
-            const y = h / 2 - timeBufL[i] * h / 2 * 0.9;
-            i ? c2.lineTo(x, y) : c2.moveTo(x, y);
-          }
-          c2.stroke();
-        }
-
-        // GONIOMETER
-        {
-          const { c2, w, h } = setupCanvas(gonio);
-          c2.clearRect(0, 0, w, h);
-          c2.strokeStyle = "rgba(224,18,46,0.25)";
-          c2.beginPath(); c2.moveTo(w / 2, 0); c2.lineTo(w / 2, h); c2.stroke();
-          c2.beginPath(); c2.moveTo(w / 2 - h / 2, h / 2 + h / 2 * 0.9); c2.lineTo(w / 2, h * 0.05); c2.lineTo(w / 2 + h / 2, h / 2 + h / 2 * 0.9); c2.stroke();
-          c2.fillStyle = "rgba(255,42,72,0.6)";
-          for (let i = 0; i < 1024; i += 4) {
-            const l = timeBufL[i], r = timeBufR[i];
-            const x = w / 2 + (r - l) * w / 2 * 0.8;
-            const y = h / 2 - (l + r) * h / 2 * 0.8;
-            c2.fillRect(x, y, 2, 2);
-          }
-        }
-
-        // LUFS (simplified)
-        {
-          let sum = 0;
-          for (let i = 0; i < timeBufL.length; i++) sum += timeBufL[i] * timeBufL[i];
-          const rms = Math.sqrt(sum / timeBufL.length);
-          const db = 20 * Math.log10(rms || 1e-7);
-          lufsHistory.push(db - 5);
-          lufsHistory.shift();
-          const { c2, w, h } = setupCanvas(lufsCv);
-          c2.clearRect(0, 0, w, h);
-          c2.strokeStyle = "#ff2a48"; c2.lineWidth = 2;
-          c2.beginPath();
-          for (let i = 0; i < lufsHistory.length; i++) {
-            const x = (i / lufsHistory.length) * w;
-            const v = Math.max(-60, Math.min(0, lufsHistory[i]));
-            const y = h - ((v + 60) / 60) * h;
-            i ? c2.lineTo(x, y) : c2.moveTo(x, y);
-          }
-          c2.stroke();
-          lufsEl.textContent = db.toFixed(1);
-        }
-
-        // Readouts
-        let peak = 0, sum = 0;
-        for (let i = 0; i < timeBufL.length; i++) {
-          peak = Math.max(peak, Math.abs(timeBufL[i]));
-          sum += timeBufL[i] * timeBufL[i];
-        }
-        peakEl.textContent = peak > 0 ? (20 * Math.log10(peak)).toFixed(1) : "-inf";
-        const rms = Math.sqrt(sum / timeBufL.length);
-        rmsEl.textContent = rms > 0 ? (20 * Math.log10(rms)).toFixed(1) : "-inf";
-
-        let maxBin = 0, maxVal = 0;
-        for (let i = 1; i < freqBuf.length; i++) if (freqBuf[i] > maxVal) { maxVal = freqBuf[i]; maxBin = i; }
-        const freqHz = Math.round(maxBin * (ctx.sampleRate / 2) / freqBuf.length);
-        freqEl.textContent = maxVal > 30 ? freqHz + " Hz" : "—";
-
-        // Simple correlation
-        let num = 0, dl = 0, dr = 0;
-        for (let i = 0; i < timeBufL.length; i++) {
-          num += timeBufL[i] * timeBufR[i];
-          dl += timeBufL[i] * timeBufL[i];
-          dr += timeBufR[i] * timeBufR[i];
-        }
-        const corr = (dl && dr) ? num / Math.sqrt(dl * dr) : 0;
-        corrEl.textContent = corr.toFixed(2);
-      }
-      loop();
-    }
-
-    // Expose for hot updates
-    window.__elixirUI = { render, updateStatus };
+    showPanel(true);
+    setInterval(updateStatus, 1500);
   }
 
-  // Apply state to DSP (stub in step 1)
-  function applyState() {
-    // DSP wiring comes in Step 2.
-    if (window.__elixirUI) window.__elixirUI.updateStatus();
-  }
-
-  // Init
+  // ============================================================
+  // INIT
+  // ============================================================
   if (document.body) buildUI();
   else document.addEventListener("DOMContentLoaded", buildUI, { once: true });
 })();
