@@ -1,4 +1,4 @@
-/* Elixir V1 — core (main world) — by s3m */
+/* Elixir V1 — core (main world) — by thalvrix */
 (() => {
   if (window.__elixirV1) return;
   window.__elixirV1 = true;
@@ -9,15 +9,10 @@
   // STATE
   // ============================================================
   const state = {
-    // MAIN
     preamp: 1, gain: 1.2, rage: 0, distortion: 0, bitrate: 320, exciter: 0,
-    // SPATIAL
     stereo: false, wider: false, haas: false, inHead: false, behind: false, spatial360: false,
-    // VOICE
     presence: 0, clarity: 0, smooth: 0, voiceBoost: 0, deEsser: false,
-    // FX
     reverb: 0, repeater: false, blackHole: false, echo: false, pitch: 0,
-    // 20 uncommon features
     f_deEsser: false, f_adaptiveNoise: false, f_transient: false, f_formant: false,
     f_breath: false, f_plosive: false, f_clickRemove: false, f_roomTone: false,
     f_ducking: false, f_autoEQ: false, f_lufsLock: false, f_doubler: false,
@@ -26,7 +21,7 @@
   };
 
   // ============================================================
-  // AUDIO CHAIN (pass-through in Step 1)
+  // AUDIO CHAIN (pass-through for Step 1)
   // ============================================================
   let ctx = null, src = null, outDest = null;
   let anL = null, anR = null;
@@ -182,11 +177,7 @@
     ]
   };
 
-  // ============================================================
-  // applyState stub
-  // ============================================================
   function applyState() {}
-
   function updateStatus() {
     const live = !!(outDest && outDest.stream.getAudioTracks().some(t => t.readyState === "live"));
     const el = document.getElementById("ex-status-text");
@@ -236,6 +227,7 @@
         <div class="ex-content" id="ex-content"></div>
       </div>
       <div class="ex-footer">
+        <button class="ex-btn preset" id="ex-121" title="Toggle 121 preset">121</button>
         <button class="ex-btn primary" id="ex-save">SAVE</button>
         <button class="ex-btn" id="ex-copy">COPY</button>
         <button class="ex-btn" id="ex-paste">PASTE</button>
@@ -466,7 +458,6 @@
         anL.getFloatTimeDomainData(tL);
         anR.getFloatTimeDomainData(tR);
 
-        // WAVEFORM
         {
           const { c, w, h } = fit(scopeCv);
           c.clearRect(0, 0, w, h);
@@ -483,7 +474,6 @@
           c.stroke();
         }
 
-        // SPECTRUM
         {
           const { c, w, h } = fit(specCv);
           c.clearRect(0, 0, w, h);
@@ -497,7 +487,6 @@
           }
         }
 
-        // VECTORSCOPE
         {
           const { c, w, h } = fit(gonioCv);
           c.clearRect(0, 0, w, h);
@@ -513,7 +502,6 @@
           }
         }
 
-        // LUFS
         let peak = 0, sum = 0;
         for (let i = 0; i < tL.length; i++) {
           peak = Math.max(peak, Math.abs(tL[i]));
@@ -537,7 +525,6 @@
           c.stroke();
         }
 
-        // Readouts
         peakEl.textContent = (peak > 0 ? 20 * Math.log10(peak) : -Infinity).toFixed(1) + " dB";
         lufsEl.textContent = db.toFixed(1) + " LUFS";
         let mb = 0, mv = 0;
@@ -553,7 +540,7 @@
       frame();
     }
 
-    // ---- TOPBAR / FOOTER ----
+    // ---- TOPBAR / SHOW-HIDE ----
     const showPanel = v => {
       panel.classList.toggle("open", v);
       trigger.classList.toggle("show", !v);
@@ -561,15 +548,65 @@
     panel.querySelector("#ex-close").onclick = () => showPanel(false);
     trigger.onclick = () => showPanel(true);
 
+    // ---- SAVE ----
     panel.querySelector("#ex-save").onclick = () => {
       localStorage.setItem("elixir_v1_state", JSON.stringify(state));
       statusText.textContent = "SAVED";
       setTimeout(updateStatus, 1200);
     };
 
-    panel.querySelector("#ex-reset").onclick = () => {
-      localStorage.removeItem("elixir_v1_state");
-      location.reload();
+    // ---- 121 TOGGLE ----
+    const PRESET_121 = {
+      preamp: 121, gain: 121, rage: 0, distortion: 0, bitrate: 510, exciter: 121,
+      stereo: false, wider: false, haas: false, inHead: false, behind: false, spatial360: false,
+      presence: 121, clarity: 121, smooth: 0, voiceBoost: 121, deEsser: false,
+      reverb: 0, repeater: false, blackHole: false, echo: false, pitch: 0,
+      f_deEsser: false, f_adaptiveNoise: false, f_transient: false, f_formant: false,
+      f_breath: false, f_plosive: false, f_clickRemove: false, f_roomTone: false,
+      f_ducking: false, f_autoEQ: false, f_lufsLock: false, f_doubler: false,
+      f_subOctave: false, f_telephone: false, f_underwater: false, f_robot: false,
+      f_stutter: false, f_reverseReverb: false, f_autoGain: false, f_spatialRotate: false
+    };
+
+    const btn121 = panel.querySelector("#ex-121");
+    let preset121On = false;
+    let preset121Backup = null;
+
+    // Restore 121 on/off state and backup
+    try {
+      if (localStorage.getItem("elixir_v1_121on") === "true") {
+        preset121On = true;
+        btn121.classList.add("on");
+        try {
+          preset121Backup = JSON.parse(localStorage.getItem("elixir_v1_121backup") || "null");
+        } catch {}
+      }
+    } catch {}
+
+    btn121.onclick = () => {
+      if (!preset121On) {
+        preset121Backup = JSON.parse(JSON.stringify(state));
+        localStorage.setItem("elixir_v1_121backup", JSON.stringify(preset121Backup));
+        Object.assign(state, PRESET_121);
+        preset121On = true;
+        btn121.classList.add("on");
+        statusText.textContent = "121 ON";
+        localStorage.setItem("elixir_v1_121on", "true");
+      } else {
+        if (preset121Backup) {
+          Object.assign(state, preset121Backup);
+          preset121Backup = null;
+        }
+        localStorage.removeItem("elixir_v1_121backup");
+        localStorage.removeItem("elixir_v1_121on");
+        preset121On = false;
+        btn121.classList.remove("on");
+        statusText.textContent = "121 OFF";
+      }
+      localStorage.setItem("elixir_v1_state", JSON.stringify(state));
+      render();
+      applyState();
+      setTimeout(updateStatus, 1400);
     };
 
     // ---- COPY ----
@@ -627,7 +664,6 @@
         if (applyText(text)) return;
       }
 
-      // Modal fallback
       const modal = document.createElement("div");
       modal.className = "ex-modal-backdrop";
       modal.innerHTML = `
@@ -664,6 +700,15 @@
       });
     };
 
+    // ---- RESET ----
+    panel.querySelector("#ex-reset").onclick = () => {
+      localStorage.removeItem("elixir_v1_state");
+      localStorage.removeItem("elixir_v1_121on");
+      localStorage.removeItem("elixir_v1_121backup");
+      location.reload();
+    };
+
+    // ---- KEYBOARD ----
     window.addEventListener("keydown", e => {
       if (!panel.classList.contains("open")) return;
       if (e.ctrlKey && e.key === "s") { e.preventDefault(); panel.querySelector("#ex-save").click(); }
@@ -672,7 +717,7 @@
       }
     });
 
-    // Drag
+    // ---- DRAG ----
     const topbar = panel.querySelector(".ex-topbar");
     topbar.addEventListener("pointerdown", e => {
       if (e.target.closest("button")) return;
@@ -699,9 +744,6 @@
     setInterval(updateStatus, 1500);
   }
 
-  // ============================================================
-  // INIT
-  // ============================================================
   if (document.body) buildUI();
   else document.addEventListener("DOMContentLoaded", buildUI, { once: true });
 })();
