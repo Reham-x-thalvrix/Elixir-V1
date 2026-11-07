@@ -17,7 +17,7 @@
     presence: 0, clarity: 0, smooth: 0, voiceBoost: 0, deEsser: false,
     // FX
     reverb: 0, repeater: false, blackHole: false, echo: false, pitch: 0,
-    // 20 uncommon features (all toggles, default off)
+    // 20 uncommon features
     f_deEsser: false, f_adaptiveNoise: false, f_transient: false, f_formant: false,
     f_breath: false, f_plosive: false, f_clickRemove: false, f_roomTone: false,
     f_ducking: false, f_autoEQ: false, f_lufsLock: false, f_doubler: false,
@@ -26,7 +26,7 @@
   };
 
   // ============================================================
-  // AUDIO CHAIN (Step 1 = pass-through; DSP comes in Step 2)
+  // AUDIO CHAIN (pass-through in Step 1)
   // ============================================================
   let ctx = null, src = null, outDest = null;
   let anL = null, anR = null;
@@ -183,11 +183,9 @@
   };
 
   // ============================================================
-  // applyState (stub for Step 1)
+  // applyState stub
   // ============================================================
-  function applyState() {
-    // DSP wiring comes in Step 2.
-  }
+  function applyState() {}
 
   function updateStatus() {
     const live = !!(outDest && outDest.stream.getAudioTracks().some(t => t.readyState === "live"));
@@ -238,9 +236,9 @@
         <div class="ex-content" id="ex-content"></div>
       </div>
       <div class="ex-footer">
-        <button class="ex-btn" id="ex-load">LOAD</button>
         <button class="ex-btn primary" id="ex-save">SAVE</button>
         <button class="ex-btn" id="ex-copy">COPY</button>
+        <button class="ex-btn" id="ex-paste">PASTE</button>
         <button class="ex-btn danger" id="ex-reset">RESET</button>
       </div>`;
     document.body.appendChild(panel);
@@ -568,22 +566,102 @@
       statusText.textContent = "SAVED";
       setTimeout(updateStatus, 1200);
     };
-    panel.querySelector("#ex-load").onclick = () => {
-      try {
-        const s = JSON.parse(localStorage.getItem("elixir_v1_state") || "null");
-        if (s) { Object.assign(state, s); render(); applyState(); }
-      } catch {}
-    };
-    panel.querySelector("#ex-copy").onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(JSON.stringify(state, null, 2));
-        statusText.textContent = "COPIED";
-        setTimeout(updateStatus, 1200);
-      } catch {}
-    };
+
     panel.querySelector("#ex-reset").onclick = () => {
       localStorage.removeItem("elixir_v1_state");
       location.reload();
+    };
+
+    // ---- COPY ----
+    panel.querySelector("#ex-copy").onclick = async () => {
+      const json = JSON.stringify(state, null, 2);
+      try {
+        await navigator.clipboard.writeText(json);
+        statusText.textContent = "COPIED";
+      } catch {
+        const ta = document.createElement("textarea");
+        ta.value = json;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand("copy"); statusText.textContent = "COPIED"; }
+        catch { statusText.textContent = "COPY FAILED"; }
+        ta.remove();
+      }
+      setTimeout(updateStatus, 1400);
+    };
+
+    // ---- PASTE ----
+    panel.querySelector("#ex-paste").onclick = async () => {
+      let text = "";
+      try {
+        if (navigator.clipboard && navigator.clipboard.readText) {
+          text = await navigator.clipboard.readText();
+        }
+      } catch {}
+
+      const applyText = (raw) => {
+        try {
+          const parsed = JSON.parse(raw);
+          if (!parsed || typeof parsed !== "object") throw new Error("not object");
+          let count = 0;
+          for (const k of Object.keys(state)) {
+            if (k in parsed) { state[k] = parsed[k]; count++; }
+          }
+          if (count === 0) throw new Error("no matching keys");
+          localStorage.setItem("elixir_v1_state", JSON.stringify(state));
+          render();
+          applyState();
+          statusText.textContent = "PASTED";
+          setTimeout(updateStatus, 1400);
+          return true;
+        } catch (e) {
+          statusText.textContent = "INVALID JSON";
+          setTimeout(updateStatus, 1400);
+          return false;
+        }
+      };
+
+      if (text && text.trim().startsWith("{")) {
+        if (applyText(text)) return;
+      }
+
+      // Modal fallback
+      const modal = document.createElement("div");
+      modal.className = "ex-modal-backdrop";
+      modal.innerHTML = `
+        <div class="ex-modal">
+          <div class="ex-modal-head">
+            <span>PASTE SETTINGS</span>
+            <button class="ex-icon-btn" id="ex-modal-close">×</button>
+          </div>
+          <textarea class="ex-modal-input" id="ex-modal-input"
+            placeholder='{"preamp": 12.5, "gain": 800, ...}'
+            spellcheck="false"></textarea>
+          <div class="ex-modal-foot">
+            <button class="ex-btn" id="ex-modal-cancel">CANCEL</button>
+            <button class="ex-btn primary" id="ex-modal-apply">APPLY</button>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+      const input = modal.querySelector("#ex-modal-input");
+      const closeModal = () => modal.remove();
+      modal.querySelector("#ex-modal-close").onclick = closeModal;
+      modal.querySelector("#ex-modal-cancel").onclick = closeModal;
+      modal.addEventListener("click", e => { if (e.target === modal) closeModal(); });
+      modal.querySelector("#ex-modal-apply").onclick = () => {
+        const raw = input.value.trim();
+        if (!raw) return;
+        if (applyText(raw)) closeModal();
+      };
+      input.focus();
+      input.addEventListener("keydown", e => {
+        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          modal.querySelector("#ex-modal-apply").click();
+        }
+      });
     };
 
     window.addEventListener("keydown", e => {
