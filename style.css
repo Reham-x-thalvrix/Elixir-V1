@@ -1,6 +1,5 @@
 /* ============================================================
    ELIXIR V1 — UI stylesheet (original design)
-   Console / instrument-panel aesthetic.
    ============================================================ */
 
 :root {
@@ -136,6 +135,12 @@
   padding: 16px;
   display: flex; flex-direction: column;
   gap: 14px;
+  transition: opacity .2s;
+}
+.ex-content.locked {
+  opacity: 0.35;
+  pointer-events: none;
+  filter: grayscale(0.5);
 }
 
 .ex-content::-webkit-scrollbar,
@@ -307,10 +312,51 @@
 }
 .ex-meter-canvas.tall { height: 120px; }
 
+/* -------- CONSOLE -------- */
+.ex-console {
+  display: flex; flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: #0a0d12;
+  border: 1px solid var(--ex-line);
+  border-radius: var(--ex-radius);
+  font-family: var(--ex-font-mono);
+  font-size: 11px;
+  color: var(--ex-ink-dim);
+}
+.ex-console-row {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 3px 0;
+  border-bottom: 1px dashed rgba(45,53,66,0.5);
+}
+.ex-console-row:last-child { border-bottom: 0; }
+.ex-console-key {
+  flex: none;
+  width: 64px;
+  color: var(--ex-cyan);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+.ex-console-val {
+  color: var(--ex-ink-dim);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.ex-console-val b {
+  color: var(--ex-ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-left: 2px;
+}
+
 /* -------- FOOTER -------- */
 .ex-footer {
   flex: none;
-  display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px;
   padding: 10px 12px;
   background: var(--ex-surface);
   border-top: 1px solid var(--ex-line);
@@ -324,7 +370,7 @@
   cursor: pointer;
   font-family: var(--ex-font-mono);
   font-size: 10px; font-weight: 600;
-  letter-spacing: 0.12em; text-transform: uppercase;
+  letter-spacing: 0.1em; text-transform: uppercase;
   transition: all .15s;
 }
 .ex-btn:hover {
@@ -335,6 +381,23 @@
 .ex-btn.primary:hover { background: rgba(34,211,238,0.1); }
 .ex-btn.danger  { color: var(--ex-rose); border-color: rgba(251,113,133,0.3); }
 .ex-btn.danger:hover { background: rgba(251,113,133,0.1); }
+
+.ex-btn.normal {
+  color: var(--ex-ink-dim);
+  border-color: rgba(139,148,158,0.35);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+.ex-btn.normal:hover {
+  background: rgba(139,148,158,0.12);
+  color: var(--ex-ink);
+}
+.ex-btn.normal.on {
+  background: linear-gradient(180deg, rgba(139,148,158,0.35), rgba(80,90,105,0.4));
+  color: #fff;
+  border-color: var(--ex-ink);
+  box-shadow: 0 0 10px rgba(180,190,200,0.4);
+}
 
 .ex-btn.preset {
   color: var(--ex-amber);
@@ -408,22 +471,4 @@
   width: 100%; box-sizing: border-box;
   min-height: 200px; max-height: 40vh;
   padding: 12px;
-  background: #0a0d12;
-  color: var(--ex-ink);
-  border: 0; border-bottom: 1px solid var(--ex-line);
-  font-family: var(--ex-font-mono);
-  font-size: 11px;
-  line-height: 1.5;
-  resize: vertical;
-  outline: none;
-}
-.ex-modal-input::placeholder { color: var(--ex-ink-faint); }
-.ex-modal-foot {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
-  padding: 10px 12px;
-  background: var(--ex-surface);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ex-nav, .ex-led-btn, .ex-btn, .ex-icon-btn, .ex-knob-fill { transition: none; }
-}
+  background: #
