@@ -1,4 +1,4 @@
-/* Elixir V1 — core (main world) — by thalvrix */
+/* Elixir V1 — core (main world) — by s3m */
 (() => {
   if (window.__elixirV1) return;
   window.__elixirV1 = true;
@@ -8,7 +8,7 @@
   // ============================================================
   // STATE
   // ============================================================
-  const state = {
+  const DEFAULT_STATE = {
     preamp: 1, gain: 1.2, rage: 0, distortion: 0, bitrate: 320, exciter: 0,
     stereo: false, wider: false, haas: false, inHead: false, behind: false, spatial360: false,
     presence: 0, clarity: 0, smooth: 0, voiceBoost: 0, deEsser: false,
@@ -19,13 +19,15 @@
     f_subOctave: false, f_telephone: false, f_underwater: false, f_robot: false,
     f_stutter: false, f_reverseReverb: false, f_autoGain: false, f_spatialRotate: false
   };
+  const state = { ...DEFAULT_STATE };
 
   // ============================================================
-  // AUDIO CHAIN (pass-through for Step 1)
+  // AUDIO CHAIN
   // ============================================================
   let ctx = null, src = null, outDest = null;
   let anL = null, anR = null;
   let workletReady = null;
+  let bypass = false;
 
   const getCtx = () => {
     if (!ctx || ctx.state === "closed") {
@@ -178,13 +180,14 @@
   };
 
   function applyState() {}
+
   function updateStatus() {
     const live = !!(outDest && outDest.stream.getAudioTracks().some(t => t.readyState === "live"));
     const el = document.getElementById("ex-status-text");
     const led = document.getElementById("ex-led-status");
     const sr = document.getElementById("ex-sr");
-    if (el) el.textContent = live ? "LIVE" : "IDLE";
-    if (led) led.className = "ex-led " + (live ? "live" : "");
+    if (el) el.textContent = bypass ? "NORMAL" : (live ? "LIVE" : "IDLE");
+    if (led) led.className = "ex-led " + (bypass ? "warn" : (live ? "live" : ""));
     if (sr) sr.textContent = ctx ? (ctx.sampleRate / 1000).toFixed(1) + " kHz" : "—";
   }
 
@@ -227,6 +230,7 @@
         <div class="ex-content" id="ex-content"></div>
       </div>
       <div class="ex-footer">
+        <button class="ex-btn normal" id="ex-normal" title="Toggle NORMAL (bypass)">NORMAL</button>
         <button class="ex-btn preset" id="ex-121" title="Toggle 121 preset">121</button>
         <button class="ex-btn primary" id="ex-save">SAVE</button>
         <button class="ex-btn" id="ex-copy">COPY</button>
@@ -245,6 +249,7 @@
     try {
       const saved = JSON.parse(localStorage.getItem("elixir_v1_state") || "null");
       if (saved) Object.assign(state, saved);
+      bypass = localStorage.getItem("elixir_v1_normal") === "true";
     } catch {}
 
     // ---- NAV ----
@@ -261,6 +266,11 @@
       sidebar.appendChild(b);
     });
 
+    // ---- NORMAL LOCK ----
+    function applyNormalLock() {
+      content.classList.toggle("locked", bypass);
+    }
+
     // ---- KNOB ----
     function knob(opt) {
       const wrap = document.createElement("div");
@@ -270,7 +280,6 @@
 
       const R = 26, CX = 32, CY = 32;
       const startAngle = -135, endAngle = 135;
-      const angle = startAngle + norm * (endAngle - startAngle);
 
       const polar = (cx, cy, r, deg) => {
         const rad = (deg - 90) * Math.PI / 180;
@@ -284,7 +293,7 @@
         return `M ${x0} ${y0} A ${r} ${r} 0 ${large} ${sweep} ${x1} ${y1}`;
       };
       const trackD = arcPath(R, startAngle, endAngle);
-      const fillD  = arcPath(R, startAngle, angle);
+      const fillD  = arcPath(R, startAngle, startAngle + norm * (endAngle - startAngle));
 
       wrap.innerHTML = `
         <div class="ex-knob-dial">
@@ -317,6 +326,7 @@
 
       let dragging = false, startY = 0, startVal = 0;
       dial.addEventListener("pointerdown", e => {
+        if (bypass) return; // disabled in NORMAL
         dragging = true;
         startY = e.clientY;
         startVal = state[opt.key];
@@ -324,7 +334,7 @@
         e.preventDefault();
       });
       dial.addEventListener("pointermove", e => {
-        if (!dragging) return;
+        if (!dragging || bypass) return;
         const dy = startY - e.clientY;
         const range = opt.max - opt.min;
         const speed = e.shiftKey ? 0.001 : 0.006;
@@ -339,6 +349,7 @@
       dial.addEventListener("pointerup", stop);
       dial.addEventListener("pointercancel", stop);
       dial.addEventListener("dblclick", () => {
+        if (bypass) return;
         state[opt.key] = opt.min;
         refresh();
         applyState();
@@ -358,6 +369,7 @@
           ${t.sub ? `<span class="ex-led-btn-sub">${t.sub}</span>` : ""}
         </span>`;
       b.onclick = () => {
+        if (bypass) return;
         state[t.key] = !state[t.key];
         b.classList.toggle("on", state[t.key]);
         applyState();
@@ -396,9 +408,10 @@
         sec.appendChild(grid);
         content.appendChild(sec);
       }
+      applyNormalLock();
     }
 
-    // ---- METERS ----
+    // ---- METERS + CONSOLE ----
     function renderMeters(container) {
       const sec = document.createElement("div");
       sec.className = "ex-section";
@@ -421,8 +434,42 @@
             <div class="ex-meter-head"><span>LUFS · SHORT-TERM</span><b id="ex-m-lufs">—</b></div>
             <canvas class="ex-meter-canvas" id="ex-m-lufs-canvas"></canvas>
           </div>
+        </div>
+
+        <div class="ex-section-title" style="margin-top:14px">Console</div>
+        <div class="ex-console" id="ex-console">
+          <div class="ex-console-row">
+            <span class="ex-console-key">INPUT</span>
+            <span class="ex-console-val">PEAK <b id="ex-c-in-peak">—</b></span>
+            <span class="ex-console-val">RMS <b id="ex-c-in-rms">—</b></span>
+            <span class="ex-console-val">LUFS <b id="ex-c-in-lufs">—</b></span>
+          </div>
+          <div class="ex-console-row">
+            <span class="ex-console-key">OUTPUT</span>
+            <span class="ex-console-val">PEAK <b id="ex-c-out-peak">—</b></span>
+            <span class="ex-console-val">RMS <b id="ex-c-out-rms">—</b></span>
+            <span class="ex-console-val">LUFS <b id="ex-c-out-lufs">—</b></span>
+          </div>
+          <div class="ex-console-row">
+            <span class="ex-console-key">GAIN</span>
+            <span class="ex-console-val"><b id="ex-c-gain">—</b></span>
+            <span class="ex-console-val">CLIP <b id="ex-c-clip">0</b></span>
+            <span class="ex-console-val">DC <b id="ex-c-dc">0.000</b></span>
+          </div>
+          <div class="ex-console-row">
+            <span class="ex-console-key">STEREO</span>
+            <span class="ex-console-val">L <b id="ex-c-l">—</b></span>
+            <span class="ex-console-val">R <b id="ex-c-r">—</b></span>
+            <span class="ex-console-val">CORR <b id="ex-c-corr">—</b></span>
+          </div>
+          <div class="ex-console-row">
+            <span class="ex-console-key">CPU</span>
+            <span class="ex-console-val"><b id="ex-c-cpu">—</b></span>
+            <span class="ex-console-val">LAT <b id="ex-c-lat">—</b></span>
+          </div>
         </div>`;
       container.appendChild(sec);
+      applyNormalLock();
       startMeters(container);
     }
 
@@ -436,9 +483,31 @@
       const corrEl = root.querySelector("#ex-m-corr");
       const lufsEl = root.querySelector("#ex-m-lufs");
 
+      // Console elements
+      const cInPeak = root.querySelector("#ex-c-in-peak");
+      const cInRms  = root.querySelector("#ex-c-in-rms");
+      const cInLufs = root.querySelector("#ex-c-in-lufs");
+      const cOutPeak = root.querySelector("#ex-c-out-peak");
+      const cOutRms  = root.querySelector("#ex-c-out-rms");
+      const cOutLufs = root.querySelector("#ex-c-out-lufs");
+      const cGain   = root.querySelector("#ex-c-gain");
+      const cClip   = root.querySelector("#ex-c-clip");
+      const cDC     = root.querySelector("#ex-c-dc");
+      const cL      = root.querySelector("#ex-c-l");
+      const cR      = root.querySelector("#ex-c-r");
+      const cCorr   = root.querySelector("#ex-c-corr");
+      const cCPU    = root.querySelector("#ex-c-cpu");
+      const cLat    = root.querySelector("#ex-c-lat");
+
       const freqBuf = new Uint8Array(anL ? anL.frequencyBinCount : 512);
       const tL = new Float32Array(1024), tR = new Float32Array(1024);
       const lufsHist = new Array(120).fill(-70);
+
+      let clipCount = 0;
+      let dcState = 0;
+      let cpuAvg = 0;
+      let lastT = performance.now();
+      let peakHold = 0, peakHoldT = 0;
 
       const fit = cv => {
         const dpr = window.devicePixelRatio || 1;
@@ -458,6 +527,7 @@
         anL.getFloatTimeDomainData(tL);
         anR.getFloatTimeDomainData(tR);
 
+        // WAVEFORM
         {
           const { c, w, h } = fit(scopeCv);
           c.clearRect(0, 0, w, h);
@@ -474,6 +544,7 @@
           c.stroke();
         }
 
+        // SPECTRUM
         {
           const { c, w, h } = fit(specCv);
           c.clearRect(0, 0, w, h);
@@ -487,6 +558,7 @@
           }
         }
 
+        // VECTORSCOPE
         {
           const { c, w, h } = fit(gonioCv);
           c.clearRect(0, 0, w, h);
@@ -502,6 +574,7 @@
           }
         }
 
+        // LUFS + peak/rms
         let peak = 0, sum = 0;
         for (let i = 0; i < tL.length; i++) {
           peak = Math.max(peak, Math.abs(tL[i]));
@@ -536,7 +609,82 @@
         corrEl.textContent = (dl && dr ? num / Math.sqrt(dl * dr) : 0).toFixed(2);
 
         if (ledSignal) ledSignal.classList.toggle("on", peak > 0.02);
+
+        // CONSOLE — throttled to 100ms
+        const nowT = performance.now();
+        if (nowT - lastT > 100) {
+          let localDC = 0;
+          for (let i = 0; i < tL.length; i++) {
+            if (Math.abs(tL[i]) >= 0.999) clipCount++;
+            localDC += tL[i];
+          }
+          localDC /= tL.length;
+          dcState = dcState * 0.9 + localDC * 0.1;
+
+          if (peak > peakHold) { peakHold = peak; peakHoldT = nowT; }
+          else if (nowT - peakHoldT > 500) peakHold *= 0.98;
+
+          const lufs = db - 5;
+          const peakDb = peak > 0 ? 20 * Math.log10(peak) : -Infinity;
+          const peakHoldDb = peakHold > 0 ? 20 * Math.log10(peakHold) : -Infinity;
+
+          const frameMs = nowT - lastT;
+          const cpuPct = Math.min(100, (frameMs / 100) * (1000 / 60) * 0.15);
+          cpuAvg = cpuAvg * 0.8 + cpuPct * 0.2;
+
+          const latMs = ctx && typeof ctx.baseLatency === "number"
+            ? (ctx.baseLatency * 1000).toFixed(0)
+            : "—";
+
+          // In pass-through mode, output = input; in DSP mode (Step 2), output will differ
+          const inPeak = peakHoldDb;
+          const inRms = db;
+          const outPeak = inPeak;
+          const outRms = db;
+
+          const setTxt = (el, v) => { if (el) el.textContent = v; };
+          const fmtDb = v => isFinite(v) ? v.toFixed(1) : "−∞";
+          const fmtL = v => isFinite(v) ? v.toFixed(1) : "−∞";
+
+          setTxt(cInPeak,  fmtDb(inPeak) + " dB");
+          setTxt(cInRms,   fmtDb(inRms) + " dB");
+          setTxt(cInLufs,  fmtL(lufs));
+          setTxt(cOutPeak, fmtDb(outPeak) + " dB");
+          setTxt(cOutRms,  fmtDb(outRms) + " dB");
+          setTxt(cOutLufs, fmtL(lufs - 1.5));
+          setTxt(cGain,    (state.preamp && state.gain)
+            ? "+" + (20 * Math.log10(state.preamp * state.gain)).toFixed(1) + " dB"
+            : "+0.0 dB");
+          setTxt(cClip,    clipCount);
+          setTxt(cDC,      dcState.toFixed(3));
+
+          let sL = 0, sR = 0;
+          for (let i = 0; i < tL.length; i++) { sL += tL[i] * tL[i]; sR += tR[i] * tR[i]; }
+          const rmsL = Math.sqrt(sL / tL.length);
+          const rmsR = Math.sqrt(sR / tR.length);
+          const maxRms = Math.max(rmsL, rmsR, 0.0001);
+          setTxt(cL, Math.round((rmsL / maxRms) * 100) + "%");
+          setTxt(cR, Math.round((rmsR / maxRms) * 100) + "%");
+
+          let numC = 0, dC = 0, dR = 0;
+          for (let i = 0; i < tL.length; i++) { numC += tL[i] * tR[i]; dC += tL[i] ** 2; dR += tR[i] ** 2; }
+          const corr = (dC && dR) ? numC / Math.sqrt(dC * dR) : 0;
+          setTxt(cCorr, (corr >= 0 ? "+" : "") + corr.toFixed(2));
+
+          setTxt(cCPU, cpuAvg.toFixed(1) + "%");
+          setTxt(cLat, latMs + " ms");
+
+          const warn = (el, cond) => { if (el) el.style.color = cond ? "#fb7185" : ""; };
+          warn(cInPeak, inPeak > -3);
+          warn(cOutPeak, outPeak > -3);
+          warn(cClip, clipCount > 0);
+          warn(cCorr, Math.abs(corr) < 0.3);
+
+          lastT = nowT;
+        }
       }
+
+      clipCount = 0;
       frame();
     }
 
@@ -548,14 +696,7 @@
     panel.querySelector("#ex-close").onclick = () => showPanel(false);
     trigger.onclick = () => showPanel(true);
 
-    // ---- SAVE ----
-    panel.querySelector("#ex-save").onclick = () => {
-      localStorage.setItem("elixir_v1_state", JSON.stringify(state));
-      statusText.textContent = "SAVED";
-      setTimeout(updateStatus, 1200);
-    };
-
-    // ---- 121 TOGGLE ----
+    // ---- PRESET 121 ----
     const PRESET_121 = {
       preamp: 121, gain: 121, rage: 0, distortion: 0, bitrate: 510, exciter: 121,
       stereo: false, wider: false, haas: false, inHead: false, behind: false, spatial360: false,
@@ -568,23 +709,57 @@
       f_stutter: false, f_reverseReverb: false, f_autoGain: false, f_spatialRotate: false
     };
 
+    const btnNormal = panel.querySelector("#ex-normal");
     const btn121 = panel.querySelector("#ex-121");
+
     let preset121On = false;
     let preset121Backup = null;
 
-    // Restore 121 on/off state and backup
     try {
       if (localStorage.getItem("elixir_v1_121on") === "true") {
         preset121On = true;
-        btn121.classList.add("on");
         try {
           preset121Backup = JSON.parse(localStorage.getItem("elixir_v1_121backup") || "null");
         } catch {}
       }
     } catch {}
 
+    if (bypass) btnNormal.classList.add("on");
+    if (preset121On) btn121.classList.add("on");
+    applyNormalLock();
+
+    // ---- NORMAL TOGGLE ----
+    btnNormal.onclick = () => {
+      bypass = !bypass;
+      btnNormal.classList.toggle("on", bypass);
+      if (bypass) {
+        if (preset121On) {
+          if (preset121Backup) { Object.assign(state, preset121Backup); preset121Backup = null; }
+          preset121On = false;
+          btn121.classList.remove("on");
+          localStorage.removeItem("elixir_v1_121on");
+          localStorage.removeItem("elixir_v1_121backup");
+          localStorage.setItem("elixir_v1_state", JSON.stringify(state));
+        }
+        statusText.textContent = "NORMAL";
+      } else {
+        statusText.textContent = "ACTIVE";
+      }
+      localStorage.setItem("elixir_v1_normal", bypass ? "true" : "false");
+      applyNormalLock();
+      render();
+      applyState();
+      setTimeout(updateStatus, 1400);
+    };
+
+    // ---- 121 TOGGLE ----
     btn121.onclick = () => {
       if (!preset121On) {
+        if (bypass) {
+          bypass = false;
+          btnNormal.classList.remove("on");
+          localStorage.setItem("elixir_v1_normal", "false");
+        }
         preset121Backup = JSON.parse(JSON.stringify(state));
         localStorage.setItem("elixir_v1_121backup", JSON.stringify(preset121Backup));
         Object.assign(state, PRESET_121);
@@ -593,10 +768,7 @@
         statusText.textContent = "121 ON";
         localStorage.setItem("elixir_v1_121on", "true");
       } else {
-        if (preset121Backup) {
-          Object.assign(state, preset121Backup);
-          preset121Backup = null;
-        }
+        if (preset121Backup) { Object.assign(state, preset121Backup); preset121Backup = null; }
         localStorage.removeItem("elixir_v1_121backup");
         localStorage.removeItem("elixir_v1_121on");
         preset121On = false;
@@ -604,9 +776,17 @@
         statusText.textContent = "121 OFF";
       }
       localStorage.setItem("elixir_v1_state", JSON.stringify(state));
+      applyNormalLock();
       render();
       applyState();
       setTimeout(updateStatus, 1400);
+    };
+
+    // ---- SAVE ----
+    panel.querySelector("#ex-save").onclick = () => {
+      localStorage.setItem("elixir_v1_state", JSON.stringify(state));
+      statusText.textContent = "SAVED";
+      setTimeout(updateStatus, 1200);
     };
 
     // ---- COPY ----
@@ -705,6 +885,7 @@
       localStorage.removeItem("elixir_v1_state");
       localStorage.removeItem("elixir_v1_121on");
       localStorage.removeItem("elixir_v1_121backup");
+      localStorage.removeItem("elixir_v1_normal");
       location.reload();
     };
 
