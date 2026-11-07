@@ -93,7 +93,7 @@
   border-color: var(--ex-ink-faint);
 }
 
-/* -------- BODY GRID (sidebar + content) -------- */
+/* -------- BODY GRID -------- */
 .ex-main { flex: 1 1 auto; display: flex; min-height: 0; }
 
 .ex-sidebar {
@@ -138,7 +138,6 @@
   gap: 14px;
 }
 
-/* Custom scrollbar */
 .ex-content::-webkit-scrollbar,
 .ex-sidebar::-webkit-scrollbar { width: 6px; }
 .ex-content::-webkit-scrollbar-thumb,
@@ -146,7 +145,7 @@
   background: var(--ex-surface-3); border-radius: 3px;
 }
 
-/* -------- SECTION HEADING -------- */
+/* -------- SECTION -------- */
 .ex-section { display: flex; flex-direction: column; gap: 10px; }
 .ex-section-title {
   font-family: var(--ex-font-mono);
@@ -158,7 +157,7 @@
   border-bottom: 1px dashed var(--ex-line);
 }
 
-/* -------- KNOB GRID -------- */
+/* -------- KNOB -------- */
 .ex-knob-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
@@ -228,7 +227,7 @@
   box-shadow: 0 0 4px var(--ex-cyan);
 }
 
-/* -------- LED BUTTON (toggle) -------- */
+/* -------- LED BUTTON -------- */
 .ex-led-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -276,7 +275,7 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-/* -------- METER CARDS -------- */
+/* -------- METERS -------- */
 .ex-meter-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -311,7 +310,7 @@
 /* -------- FOOTER -------- */
 .ex-footer {
   flex: none;
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
   padding: 10px 12px;
   background: var(--ex-surface);
   border-top: 1px solid var(--ex-line);
@@ -337,7 +336,27 @@
 .ex-btn.danger  { color: var(--ex-rose); border-color: rgba(251,113,133,0.3); }
 .ex-btn.danger:hover { background: rgba(251,113,133,0.1); }
 
-/* -------- FLOATING TRIGGER (when hidden) -------- */
+.ex-btn.preset {
+  color: var(--ex-amber);
+  border-color: rgba(251,191,36,0.4);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+.ex-btn.preset:hover {
+  background: rgba(251,191,36,0.12);
+  border-color: var(--ex-amber);
+}
+.ex-btn.preset:active {
+  background: rgba(251,191,36,0.2);
+}
+.ex-btn.preset.on {
+  background: linear-gradient(180deg, rgba(251,191,36,0.35), rgba(180,120,0,0.35));
+  color: #fff;
+  border-color: var(--ex-amber);
+  box-shadow: 0 0 10px rgba(251,191,36,0.5);
+}
+
+/* -------- FLOATING TRIGGER -------- */
 #ex-trigger {
   position: fixed; right: 16px; bottom: 16px;
   z-index: 2147483646;
@@ -405,7 +424,6 @@
   background: var(--ex-surface);
 }
 
-/* -------- REDUCED MOTION -------- */
 @media (prefers-reduced-motion: reduce) {
   .ex-nav, .ex-led-btn, .ex-btn, .ex-icon-btn, .ex-knob-fill { transition: none; }
 }
