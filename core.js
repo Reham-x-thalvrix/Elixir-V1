@@ -22,13 +22,47 @@
   const state = { ...DEFAULT_STATE };
 
   // ============================================================
-  // AUDIO CHAIN
+  // AUDIO CHAIN STATE
   // ============================================================
   let ctx = null, src = null, outDest = null;
   let anL = null, anR = null;
   let workletReady = null;
   let bypass = false;
+  let activeRawStream = null;
 
+  // ============================================================
+  // TEARDOWN (used when NORMAL turns ON)
+  // ============================================================
+  function teardownChain() {
+    try { if (src) src.disconnect(); } catch {}
+    try {
+      if (outDest && outDest.stream) {
+        outDest.stream.getAudioTracks().forEach(t => { try { t.stop(); } catch {} });
+      }
+    } catch {}
+    src = null;
+    outDest = null;
+    anL = null;
+    anR = null;
+    if (ctx && ctx.state === "running") ctx.suspend().catch(() => {});
+    LOG("chain torn down (NORMAL)");
+  }
+
+  async function rebuildChainIfNeeded() {
+    if (!activeRawStream) return;
+    try {
+      if (ctx && ctx.state === "suspended") await ctx.resume().catch(() => {});
+      await buildChain(activeRawStream);
+      LOG("chain rebuilt");
+      updateStatus();
+    } catch (e) {
+      console.warn("[ELIXIR V1] rebuild failed", e);
+    }
+  }
+
+  // ============================================================
+  // AUDIO CONTEXT + CHAIN
+  // ============================================================
   const getCtx = () => {
     if (!ctx || ctx.state === "closed") {
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -44,6 +78,11 @@
     window.addEventListener(ev, resume, { passive: true }));
 
   async function buildChain(stream) {
+    if (bypass) {
+      LOG("NORMAL bypass — chain skipped");
+      return stream;
+    }
+
     const c = getCtx();
     if (c.state === "suspended") await c.resume().catch(() => {});
     await workletReady;
@@ -80,13 +119,24 @@
     const origGUM = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
     navigator.mediaDevices.getUserMedia = async (constraints) => {
       if (!constraints || !constraints.audio) return origGUM(constraints);
+
+      // NORMAL mode: let Discord use its own mic pipeline untouched.
+      if (bypass) {
+        LOG("NORMAL bypass — raw getUserMedia");
+        const raw = await origGUM(constraints);
+        activeRawStream = raw;
+        return raw;
+      }
+
       const audio = {
         echoCancellation: false, noiseSuppression: false, autoGainControl: false,
         channelCount: { ideal: 2, min: 1 }
       };
       if (typeof constraints.audio === "object" && constraints.audio.deviceId)
         audio.deviceId = constraints.audio.deviceId;
+
       const stream = await origGUM({ ...constraints, audio });
+      activeRawStream = stream;
       if (stream.getAudioTracks().length === 0) return stream;
       try {
         const processed = await buildChain(stream);
@@ -230,7 +280,7 @@
         <div class="ex-content" id="ex-content"></div>
       </div>
       <div class="ex-footer">
-        <button class="ex-btn normal" id="ex-normal" title="Toggle NORMAL (bypass)">NORMAL</button>
+        <button class="ex-btn normal" id="ex-normal" title="Toggle NORMAL (Discord default)">NORMAL</button>
         <button class="ex-btn preset" id="ex-121" title="Toggle 121 preset">121</button>
         <button class="ex-btn primary" id="ex-save">SAVE</button>
         <button class="ex-btn" id="ex-copy">COPY</button>
@@ -326,7 +376,7 @@
 
       let dragging = false, startY = 0, startVal = 0;
       dial.addEventListener("pointerdown", e => {
-        if (bypass) return; // disabled in NORMAL
+        if (bypass) return;
         dragging = true;
         startY = e.clientY;
         startVal = state[opt.key];
@@ -483,7 +533,6 @@
       const corrEl = root.querySelector("#ex-m-corr");
       const lufsEl = root.querySelector("#ex-m-lufs");
 
-      // Console elements
       const cInPeak = root.querySelector("#ex-c-in-peak");
       const cInRms  = root.querySelector("#ex-c-in-rms");
       const cInLufs = root.querySelector("#ex-c-in-lufs");
@@ -522,12 +571,37 @@
 
       function frame() {
         meterRAF = requestAnimationFrame(frame);
-        if (!anL || !anR) return;
+        if (!anL || !anR) {
+          // No chain (e.g. NORMAL) — clear canvases quietly
+          [scopeCv, specCv, gonioCv, lufsCv].forEach(cv => {
+            if (!cv) return;
+            const { c, w, h } = fit(cv);
+            c.clearRect(0, 0, w, h);
+          });
+          peakEl.textContent = "—";
+          freqEl.textContent = "—";
+          corrEl.textContent = "0";
+          lufsEl.textContent = "—";
+          if (cInPeak) cInPeak.textContent = "—";
+          if (cInRms) cInRms.textContent = "—";
+          if (cInLufs) cInLufs.textContent = "—";
+          if (cOutPeak) cOutPeak.textContent = "—";
+          if (cOutRms) cOutRms.textContent = "—";
+          if (cOutLufs) cOutLufs.textContent = "—";
+          if (cGain) cGain.textContent = "—";
+          if (cClip) cClip.textContent = "0";
+          if (cDC) cDC.textContent = "0.000";
+          if (cL) cL.textContent = "—";
+          if (cR) cR.textContent = "—";
+          if (cCorr) cCorr.textContent = "—";
+          if (cCPU) cCPU.textContent = "—";
+          if (cLat) cLat.textContent = "—";
+          return;
+        }
         anL.getByteFrequencyData(freqBuf);
         anL.getFloatTimeDomainData(tL);
         anR.getFloatTimeDomainData(tR);
 
-        // WAVEFORM
         {
           const { c, w, h } = fit(scopeCv);
           c.clearRect(0, 0, w, h);
@@ -544,7 +618,6 @@
           c.stroke();
         }
 
-        // SPECTRUM
         {
           const { c, w, h } = fit(specCv);
           c.clearRect(0, 0, w, h);
@@ -558,7 +631,6 @@
           }
         }
 
-        // VECTORSCOPE
         {
           const { c, w, h } = fit(gonioCv);
           c.clearRect(0, 0, w, h);
@@ -574,7 +646,6 @@
           }
         }
 
-        // LUFS + peak/rms
         let peak = 0, sum = 0;
         for (let i = 0; i < tL.length; i++) {
           peak = Math.max(peak, Math.abs(tL[i]));
@@ -610,7 +681,6 @@
 
         if (ledSignal) ledSignal.classList.toggle("on", peak > 0.02);
 
-        // CONSOLE — throttled to 100ms
         const nowT = performance.now();
         if (nowT - lastT > 100) {
           let localDC = 0;
@@ -636,7 +706,6 @@
             ? (ctx.baseLatency * 1000).toFixed(0)
             : "—";
 
-          // In pass-through mode, output = input; in DSP mode (Step 2), output will differ
           const inPeak = peakHoldDb;
           const inRms = db;
           const outPeak = inPeak;
@@ -732,6 +801,7 @@
     btnNormal.onclick = () => {
       bypass = !bypass;
       btnNormal.classList.toggle("on", bypass);
+
       if (bypass) {
         if (preset121On) {
           if (preset121Backup) { Object.assign(state, preset121Backup); preset121Backup = null; }
@@ -741,10 +811,13 @@
           localStorage.removeItem("elixir_v1_121backup");
           localStorage.setItem("elixir_v1_state", JSON.stringify(state));
         }
+        teardownChain();
         statusText.textContent = "NORMAL";
       } else {
+        rebuildChainIfNeeded();
         statusText.textContent = "ACTIVE";
       }
+
       localStorage.setItem("elixir_v1_normal", bypass ? "true" : "false");
       applyNormalLock();
       render();
