@@ -471,4 +471,22 @@
   width: 100%; box-sizing: border-box;
   min-height: 200px; max-height: 40vh;
   padding: 12px;
-  background: #
+  background: #0a0d12;
+  color: var(--ex-ink);
+  border: 0; border-bottom: 1px solid var(--ex-line);
+  font-family: var(--ex-font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+}
+.ex-modal-input::placeholder { color: var(--ex-ink-faint); }
+.ex-modal-foot {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  padding: 10px 12px;
+  background: var(--ex-surface);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ex-nav, .ex-led-btn, .ex-btn, .ex-icon-btn, .ex-knob-fill, .ex-content { transition: none; }
+}
