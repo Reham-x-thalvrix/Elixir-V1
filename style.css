@@ -1,5 +1,5 @@
 /* ============================================================
-   ELIXIR V1 — UI stylesheet (original design, not derived)
+   ELIXIR V1 — UI stylesheet (original design)
    Console / instrument-panel aesthetic.
    ============================================================ */
 
@@ -67,17 +67,19 @@
   font-family: var(--ex-font-mono);
   font-size: 10px; color: var(--ex-ink-dim); letter-spacing: 0.1em;
 }
-.ex-stat-group { display: flex; align-items: center; gap: 6px;
-  font-family: var(--ex-font-mono); font-size: 10px; color: var(--ex-ink-dim); }
+.ex-stat-group {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--ex-font-mono); font-size: 10px; color: var(--ex-ink-dim);
+}
 .ex-led {
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--ex-ink-faint);
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.5);
   transition: background .2s, box-shadow .2s;
 }
-.ex-led.on { background: var(--ex-lime); box-shadow: 0 0 8px var(--ex-lime); }
+.ex-led.on   { background: var(--ex-lime);  box-shadow: 0 0 8px var(--ex-lime); }
 .ex-led.warn { background: var(--ex-amber); box-shadow: 0 0 8px var(--ex-amber); }
-.ex-led.live { background: var(--ex-cyan); box-shadow: 0 0 8px var(--ex-cyan); }
+.ex-led.live { background: var(--ex-cyan);  box-shadow: 0 0 8px var(--ex-cyan); }
 .ex-icon-btn {
   width: 24px; height: 24px; border-radius: 4px;
   background: transparent; color: var(--ex-ink-dim);
@@ -85,7 +87,11 @@
   font-family: var(--ex-font-mono); font-size: 12px;
   transition: all .15s;
 }
-.ex-icon-btn:hover { color: var(--ex-ink); background: var(--ex-surface-2); border-color: var(--ex-ink-faint); }
+.ex-icon-btn:hover {
+  color: var(--ex-ink);
+  background: var(--ex-surface-2);
+  border-color: var(--ex-ink-faint);
+}
 
 /* -------- BODY GRID (sidebar + content) -------- */
 .ex-main { flex: 1 1 auto; display: flex; min-height: 0; }
@@ -136,12 +142,12 @@
 .ex-content::-webkit-scrollbar,
 .ex-sidebar::-webkit-scrollbar { width: 6px; }
 .ex-content::-webkit-scrollbar-thumb,
-.ex-sidebar::-webkit-scrollbar-thumb { background: var(--ex-surface-3); border-radius: 3px; }
+.ex-sidebar::-webkit-scrollbar-thumb {
+  background: var(--ex-surface-3); border-radius: 3px;
+}
 
 /* -------- SECTION HEADING -------- */
-.ex-section {
-  display: flex; flex-direction: column; gap: 10px;
-}
+.ex-section { display: flex; flex-direction: column; gap: 10px; }
 .ex-section-title {
   font-family: var(--ex-font-mono);
   font-size: 10px; font-weight: 600;
@@ -187,11 +193,24 @@
   touch-action: none;
 }
 .ex-knob-dial svg { display: block; width: 100%; height: 100%; }
-.ex-knob-track { fill: none; stroke: var(--ex-surface-3); stroke-width: 5; stroke-linecap: round; }
-.ex-knob-fill  { fill: none; stroke: var(--ex-cyan); stroke-width: 5; stroke-linecap: round;
-                 transition: stroke .15s; filter: drop-shadow(0 0 4px rgba(34,211,238,0.4)); }
-.ex-knob.hot   .ex-knob-fill { stroke: var(--ex-amber); filter: drop-shadow(0 0 4px rgba(251,191,36,0.5)); }
-.ex-knob.max   .ex-knob-fill { stroke: var(--ex-rose); filter: drop-shadow(0 0 4px rgba(251,113,133,0.5)); }
+.ex-knob-track {
+  fill: none; stroke: var(--ex-surface-3);
+  stroke-width: 5; stroke-linecap: round;
+}
+.ex-knob-fill {
+  fill: none; stroke: var(--ex-cyan);
+  stroke-width: 5; stroke-linecap: round;
+  transition: stroke .15s;
+  filter: drop-shadow(0 0 4px rgba(34,211,238,0.4));
+}
+.ex-knob.hot .ex-knob-fill {
+  stroke: var(--ex-amber);
+  filter: drop-shadow(0 0 4px rgba(251,191,36,0.5));
+}
+.ex-knob.max .ex-knob-fill {
+  stroke: var(--ex-rose);
+  filter: drop-shadow(0 0 4px rgba(251,113,133,0.5));
+}
 .ex-knob-cap {
   position: absolute; inset: 8px;
   border-radius: 50%;
@@ -277,7 +296,10 @@
   font-size: 9px; color: var(--ex-ink-dim); letter-spacing: 0.12em;
   text-transform: uppercase;
 }
-.ex-meter-head b { color: var(--ex-ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+.ex-meter-head b {
+  color: var(--ex-ink); font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
 .ex-meter-canvas {
   width: 100%; height: 90px; display: block;
   background: #0a0d12;
@@ -306,7 +328,10 @@
   letter-spacing: 0.12em; text-transform: uppercase;
   transition: all .15s;
 }
-.ex-btn:hover { background: var(--ex-surface-3); border-color: var(--ex-ink-faint); }
+.ex-btn:hover {
+  background: var(--ex-surface-3);
+  border-color: var(--ex-ink-faint);
+}
 .ex-btn.primary { color: var(--ex-cyan); border-color: var(--ex-cyan-dim); }
 .ex-btn.primary:hover { background: rgba(34,211,238,0.1); }
 .ex-btn.danger  { color: var(--ex-rose); border-color: rgba(251,113,133,0.3); }
@@ -334,7 +359,53 @@
   color: var(--ex-cyan);
 }
 
-/* Reduce motion */
+/* -------- PASTE MODAL -------- */
+.ex-modal-backdrop {
+  position: fixed; inset: 0;
+  z-index: 2147483648;
+  background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--ex-font-ui);
+}
+.ex-modal {
+  width: min(440px, calc(100vw - 32px));
+  background: var(--ex-bg);
+  border: 1px solid var(--ex-line);
+  border-radius: var(--ex-radius);
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+}
+.ex-modal-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--ex-line);
+  background: var(--ex-surface);
+  font-family: var(--ex-font-mono);
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--ex-ink-dim);
+}
+.ex-modal-input {
+  width: 100%; box-sizing: border-box;
+  min-height: 200px; max-height: 40vh;
+  padding: 12px;
+  background: #0a0d12;
+  color: var(--ex-ink);
+  border: 0; border-bottom: 1px solid var(--ex-line);
+  font-family: var(--ex-font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+}
+.ex-modal-input::placeholder { color: var(--ex-ink-faint); }
+.ex-modal-foot {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  padding: 10px 12px;
+  background: var(--ex-surface);
+}
+
+/* -------- REDUCED MOTION -------- */
 @media (prefers-reduced-motion: reduce) {
   .ex-nav, .ex-led-btn, .ex-btn, .ex-icon-btn, .ex-knob-fill { transition: none; }
 }
